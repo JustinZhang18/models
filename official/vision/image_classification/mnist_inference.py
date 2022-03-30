@@ -39,6 +39,14 @@ def decode_image(example, feature):
 
 
 def run(flags_obj, datasets_override=None, strategy_override=None):
+  # disable GPU
+  if flags_obj.num_gpus == 0:
+      os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+  # enable GPU
+  else:
+      # FIXME(hfzhang): only works on single GPU. Needed to fix it if multiple GPUS. 
+      os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+ 
   mnist = tfds.builder('mnist', data_dir=flags_obj.data_dir)
   if flags_obj.download:
     mnist.download_and_prepare()
@@ -50,7 +58,6 @@ def run(flags_obj, datasets_override=None, strategy_override=None):
   
   eval_input_dataset = mnist_test.cache().batch(flags_obj.batch_size)
   model_path = os.path.join(flags_obj.model_dir, 'saved_model')
-
 
   model = tf.keras.models.load_model(model_path)
 
