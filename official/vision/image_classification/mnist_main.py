@@ -134,7 +134,7 @@ def run(flags_obj, datasets_override=None, strategy_override=None):
       validation_data=eval_input_dataset,
       validation_freq=flags_obj.epochs_between_evals)
 
-  export_path = os.path.join(flags_obj.model_dir, 'saved_model')
+  export_path = os.path.join(flags_obj.model_dir, 'saved_model/1')
   model.save(export_path, include_optimizer=False)
 
   eval_output = model.evaluate(
