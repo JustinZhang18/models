@@ -66,16 +66,22 @@ def run(flags_obj, datasets_override=None, strategy_override=None):
         batch_input_y.append(e[1].numpy())
     data = json.dumps({"signature_name": "serving_default",
                       "instances": batch_input_x})
+    print(f'data length: {len(batch_input_x)}')
     headers = {"content-type": "application/json"}
     logging.info("Data prepared. Start requesting...")
+    stats = {}
     start = datetime.datetime.now()
     json_response = requests.post(flags_obj.url, data=data, headers=headers)
     end = datetime.datetime.now()
     logging.info("Received response.")
     predictions = json.loads(json_response.text)
     predict_y = np.argmax(predictions['predictions'], axis=1)
-    logging.info("accuracy: %f, response time: %dms",
-                 accuracy_score(batch_input_y, predict_y), (end-start).total_seconds() * 1000)
+    accuracy = accuracy_score(batch_input_y, predict_y)
+    response_time = (end-start).total_seconds() * 1000
+    logging.info("accuracy: %f, response time: %dms", accuracy, response_time)
+    stats['accuracy'] = accuracy
+    stats['response_time'] = response_time
+    print(stats)
 
 
 def define_mnist_flags():
