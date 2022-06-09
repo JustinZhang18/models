@@ -72,8 +72,8 @@ _EVAL_DATA_SOURCES = [{
 }]
 
 _TEST_DATA_SOURCES = [{
-    "url": ("https://storage.googleapis.com/tf-perf-public/"
-            "official_transformer/test_data/newstest2014.tgz"),
+    "url": ("https://storage.googleapis.com/cloud-tpu-test-datasets/"
+            "transformer_data/newstest2014.tgz"),
     "input": "newstest2014.en",
     "target": "newstest2014.de",
 }]
@@ -168,6 +168,7 @@ def download_from_url(path, url):
     filename = os.path.join(path, filename)
     logging.info("Downloading from %s to %s.", url, filename)
     inprogress_filepath = six.ensure_str(filename) + ".incomplete"
+
     inprogress_filepath, _ = urllib.request.urlretrieve(
         url, inprogress_filepath, reporthook=download_report_hook)
     # Print newline to clear the carriage return from the download progress.
