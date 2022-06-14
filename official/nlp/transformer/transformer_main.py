@@ -357,6 +357,11 @@ class TransformerTask(object):
         cased_score_history.append([current_iteration + 1, cased_score])
         uncased_score_history.append([current_iteration + 1, uncased_score])
 
+    #---------------save model for serving--------------------
+    model_export_path = os.path.join(flags_obj.model_dir, 'saved_model/1')
+    model.save(model_export_path, include_optimizer=False)
+    #----------------------------------------------------------
+
     stats = ({
         "loss": train_loss
     } if history is None else {})
