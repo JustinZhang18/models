@@ -23,6 +23,9 @@ from __future__ import print_function
 
 import os
 import tempfile
+import json
+import requests
+import datetime
 
 import numpy as np
 
@@ -89,38 +92,6 @@ def translate_and_compute_bleu(model,
   cased_score = compute_bleu.bleu_wrapper(bleu_ref, tmp_filename, True)
   os.remove(tmp_filename)
   return uncased_score, cased_score
-
-
-def evaluate_and_log_bleu(model,
-                          params,
-                          bleu_source,
-                          bleu_ref,
-                          vocab_file,
-                          distribution_strategy=None):
-  """Calculate and record the BLEU score.
-
-  Args:
-    model: A Keras model, used to generate the translations.
-    params: A dictionary, containing the translation related parameters.
-    bleu_source: A file containing source sentences for translation.
-    bleu_ref: A file containing the reference for the translated sentences.
-    vocab_file: A file containing the vocabulary for translation.
-    distribution_strategy: A platform distribution strategy, used for TPU based
-      translation.
-
-  Returns:
-    uncased_score: A float, the case insensitive BLEU score.
-    cased_score: A float, the case sensitive BLEU score.
-  """
-  subtokenizer = tokenizer.Subtokenizer(vocab_file)
-
-  uncased_score, cased_score = translate_and_compute_bleu(
-      model, params, subtokenizer, bleu_source, bleu_ref, distribution_strategy)
-
-  logging.info("Bleu score (uncased): %s", uncased_score)
-  logging.info("Bleu score (cased): %s", cased_score)
-  return uncased_score, cased_score
-
 
 class TransformerTask(object):
   """Main entry of Transformer model."""
@@ -197,10 +168,6 @@ class TransformerTask(object):
 
 
     distribution_strategy = self.distribution_strategy if self.use_tpu else None
-
-    # We only want to create the model under DS scope for TPU case.
-    # When 'distribution_strategy' is None, a no-op DummyContextManager will
-    # be used.
     with distribute_utils.get_strategy_scope(distribution_strategy):
       
       model = transformer.create_model(self.params, False)
@@ -208,7 +175,6 @@ class TransformerTask(object):
           model,
           tf.train.latest_checkpoint(self.flags_obj.model_dir))
       model.summary()
-
 
     params=self.params
     batch_size = params["decode_batch_size"]
@@ -242,50 +208,31 @@ class TransformerTask(object):
         logging.info("Decoding batch %d out of %d.", i, num_decode_batches)
         yield batch
 
-    @tf.function
-    def predict_step(inputs):
-      """Decoding step function for TPU runs."""
-
-      def _step_fn(inputs):
-        """Per replica step function."""
-        tag = inputs[0]
-        val_inputs = inputs[1]
-        val_outputs, _ = model([val_inputs], training=False)
-        return tag, val_outputs
-
-      return distribution_strategy.run(_step_fn, args=(inputs,))
-
     translations = []
     if distribution_strategy:
       num_replicas = distribution_strategy.num_replicas_in_sync
       local_batch_size = params["decode_batch_size"] // num_replicas
     for i, text in enumerate(input_generator()):
-      if distribution_strategy:
-        text = np.reshape(text, [num_replicas, local_batch_size, -1])
-        # Add tag to the input of each replica with the reordering logic after
-        # outputs, to ensure the output order matches the input order.
-        text = tf.constant(text)
+      # text_list=text.tolist()
+      # print(text[0])
+      # print("-----------------------sadas")
+      # print(text_list[0])
 
-        @tf.function
-        def text_as_per_replica():
-          replica_context = tf.distribute.get_replica_context()
-          replica_id = replica_context.replica_id_in_sync_group
-          return replica_id, text[replica_id]
+      # data = json.dumps({"signature_name": "serving_default",
+      #                 "instances": text_list})
+      # print(f'data length: {len(text_list)}')
+      # headers = {"content-type": "application/json"}
+      # logging.info("Data prepared. Start requesting...")
+      # stats = {}
+      # start = datetime.datetime.now()
+      # json_response = requests.post("http://localhost:8501/v1/models/transformer:predict", data=data, headers=headers)
+      # end = datetime.datetime.now()
+      # print("Received response: ", json_response.text)
+      # predictions = json.loads(json_response.text)
 
-        text = distribution_strategy.run(text_as_per_replica)
-        outputs = distribution_strategy.experimental_local_results(
-            predict_step(text))
-        tags, unordered_val_outputs = outputs[0]
-        tags = [tag.numpy() for tag in tags._values]
-        unordered_val_outputs = [
-            val_output.numpy() for val_output in unordered_val_outputs._values]
-        # pylint: enable=protected-access
-        val_outputs = [None] * len(tags)
-        for k in range(len(tags)):
-          val_outputs[tags[k]] = unordered_val_outputs[k]
-        val_outputs = np.reshape(val_outputs, [params["decode_batch_size"], -1])
-      else:
-        val_outputs, _ = model.predict(text)
+
+
+      val_outputs, _ = model.predict(text)
 
       length = len(val_outputs)
       for j in range(length):
@@ -293,8 +240,8 @@ class TransformerTask(object):
           translation = translate._trim_and_decode(val_outputs[j], subtokenizer)
           translations.append(translation)
     
-          logging.info("Translating:\n\tInput: %s\n\tOutput: %s",
-                      sorted_inputs[j + i * batch_size], translation)
+          # logging.info("Translating:\n\tInput: %s\n\tOutput: %s",
+          #             sorted_inputs[j + i * batch_size], translation)
 
     # Write translations in the order they appeared in the original file.
     output_file="server_output.txt"
