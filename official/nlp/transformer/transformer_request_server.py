@@ -237,7 +237,7 @@ class TransformerTask(object):
       start = datetime.datetime.now()
       json_response = requests.post("http://localhost:8501/v1/models/transformer:predict", data=data, headers=headers)
       end = datetime.datetime.now()
-      stats['elapsed_time'] = end - start
+      stats['elapsed_time'] = (end-start).total_seconds() * 1000
       print("Received response: ", json_response)
       val_outputs = self.__resp_to_nparray(json_response)
       
@@ -272,10 +272,10 @@ class TransformerTask(object):
         for i in sorted_keys:
           f.write("%s\n" % translations[i])
 
-    uncased_score = compute_bleu.bleu_wrapper(input_file, output_file, False)
-    cased_score = compute_bleu.bleu_wrapper(input_file, output_file, True)
-    print("Bleu score (uncased): ", uncased_score)
-    print("Bleu score (cased): ", cased_score)
+    
+    stats['uncased_score']=compute_bleu.bleu_wrapper(input_file, output_file, False)
+    stats['cased_score']=compute_bleu.bleu_wrapper(input_file, output_file, True)
+    print(stats)
 
   def __resp_to_nparray(self, resp):
     predictions = json.loads(resp.text)['predictions']
