@@ -198,7 +198,7 @@ class TransformerTask(object):
 
     _ensure_dir(flags_obj.model_dir)
     with distribute_utils.get_strategy_scope(self.distribution_strategy):
-      model = transformer.create_model(params, is_train=True)
+      internal_transformer_model, model = transformer.create_model(params, is_train=True)
       opt = self._create_optimizer()
 
       current_step = 0
@@ -357,6 +357,15 @@ class TransformerTask(object):
         cased_score_history.append([current_iteration + 1, cased_score])
         uncased_score_history.append([current_iteration + 1, uncased_score])
 
+
+    #---------------save model for serving--------------------
+    print("saving model...")
+    model_dir = os.path.join(self.flags_obj.model_dir, 'saved_model/1')
+    self.save_transformer_model(internal_transformer_model, model_dir)
+    print("model saved!")
+    #----------------------------------------------------------
+
+
     stats = ({
         "loss": train_loss
     } if history is None else {})
@@ -368,6 +377,23 @@ class TransformerTask(object):
       stats["bleu_cased_history"] = cased_score_history
     return stats
 
+  def save_transformer_model(self, transformer_model, model_dir):
+    class SaveModule(tf.Module):
+
+      def __init__(self, model):
+        super(SaveModule, self).__init__()
+        self.model = model
+
+      @tf.function
+      def serve(self, x):
+        return self.model.call([x], training=False)
+    save_module = SaveModule(transformer_model)
+    tensor_shape = (None, None)
+    signatures = dict(
+        serving_default=save_module.serve.get_concrete_function(
+            tf.TensorSpec(shape=tensor_shape, dtype=tf.int64, name="input")))
+    tf.saved_model.save(save_module, model_dir, signatures=signatures)    
+
   def eval(self):
     """Evaluates the model."""
     distribution_strategy = self.distribution_strategy if self.use_tpu else None
@@ -377,7 +403,7 @@ class TransformerTask(object):
     # be used.
     with distribute_utils.get_strategy_scope(distribution_strategy):
       if not self.predict_model:
-        self.predict_model = transformer.create_model(self.params, False)
+        _, self.predict_model = transformer.create_model(self.params, False)
       self._load_weights_if_possible(
           self.predict_model,
           tf.train.latest_checkpoint(self.flags_obj.model_dir))
@@ -393,7 +419,7 @@ class TransformerTask(object):
     flags_obj = self.flags_obj
 
     with tf.name_scope("model"):
-      model = transformer.create_model(params, is_train=False)
+      _, model = transformer.create_model(params, is_train=False)
       self._load_weights_if_possible(
           model, tf.train.latest_checkpoint(self.flags_obj.model_dir))
       model.summary()
