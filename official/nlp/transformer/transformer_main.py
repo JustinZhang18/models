@@ -198,7 +198,7 @@ class TransformerTask(object):
 
     _ensure_dir(flags_obj.model_dir)
     with distribute_utils.get_strategy_scope(self.distribution_strategy):
-      model = transformer.create_model(params, is_train=True)
+      internal_model,model = transformer.create_model(params, is_train=True)
       opt = self._create_optimizer()
 
       current_step = 0
@@ -358,8 +358,7 @@ class TransformerTask(object):
         uncased_score_history.append([current_iteration + 1, uncased_score])
 
     #---------------save model for serving--------------------
-    model_export_path = os.path.join(flags_obj.model_dir, 'saved_model/1')
-    model.save(model_export_path, include_optimizer=False)
+    self.export_transformer_model(internal_model)
     #----------------------------------------------------------
 
     stats = ({
@@ -381,24 +380,60 @@ class TransformerTask(object):
     # When 'distribution_strategy' is None, a no-op DummyContextManager will
     # be used.
     with distribute_utils.get_strategy_scope(distribution_strategy):
-      if not self.predict_model:
-        self.predict_model = transformer.create_model(self.params, False)
-      self._load_weights_if_possible(
-          self.predict_model,
-          tf.train.latest_checkpoint(self.flags_obj.model_dir))
+      
+      inputs = tf.keras.layers.Input((None,), dtype="int64", name="inputs")
+      #internal_model = transformer.Transformer(self.params, name="transformer_v2")
+      model_export_path = os.path.join(self.flags_obj.model_dir, 'saved_model/2')
+      imported = tf.saved_model.load(model_export_path)
+      internal_model = imported.signatures["serving_default"]
+      ret = internal_model([inputs], training=False)
+      outputs, scores = ret["outputs"], ret["scores"]
+      self.predict_model=internal_model,tf.keras.Model(inputs, [outputs, scores])
       self.predict_model.summary()
     return evaluate_and_log_bleu(
         self.predict_model, self.params, self.flags_obj.bleu_source,
         self.flags_obj.bleu_ref, self.flags_obj.vocab_file,
         distribution_strategy)
 
+  def export_transformer_model(self,transformer):
+    model_export_path = os.path.join(self.flags_obj.model_dir, 'saved_model/2')
+    class SaveModule(tf.Module):
+
+      def __init__(self, model):
+        super(SaveModule, self).__init__()
+        self.model = model
+
+      @tf.function
+      def serve(self, x):
+        return self.model.call([x], training=False)
+    save_module = SaveModule(transformer)
+    tensor_shape = (None, None)
+    signatures = dict(
+        serving_default=save_module.serve.get_concrete_function(
+            tf.TensorSpec(shape=tensor_shape, dtype=tf.int64, name="x")))
+    tf.saved_model.save(save_module, model_export_path, signatures=signatures)
+
+
+
+  def export_model(self):
+    
+    _,predict_model = transformer.create_model(self.params, True)
+    self._load_weights_if_possible(
+          predict_model,
+          tf.train.latest_checkpoint(self.flags_obj.model_dir))
+    predict_model.summary()
+    model_export_path = os.path.join(self.flags_obj.model_dir, 'saved_model/1')
+    predict_model.save(model_export_path, include_optimizer=False)
+
+
+
   def predict(self):
     """Predicts result from the model."""
     params = self.params
     flags_obj = self.flags_obj
-
+    self.export_model()
     with tf.name_scope("model"):
-      model = transformer.create_model(params, is_train=False)
+      _,model = transformer.create_model(params, is_train=False)
       self._load_weights_if_possible(
           model, tf.train.latest_checkpoint(self.flags_obj.model_dir))
       model.summary()
@@ -408,6 +443,8 @@ class TransformerTask(object):
     ds = ds.map(lambda x, y: x).take(_SINGLE_SAMPLE)
     ret = model.predict(ds)
     val_outputs, _ = ret
+    print("sadsdsadasdsdadsad")
+    print(type(val_outputs))
     length = len(val_outputs)
     for i in range(length):
       translate.translate_from_input(val_outputs[i], subtokenizer)

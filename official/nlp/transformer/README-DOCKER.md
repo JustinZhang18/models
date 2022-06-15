@@ -51,4 +51,21 @@ python3 /home/ubuntu/repos/models/official/nlp/transformer/transformer_main.py -
     --bleu_source=$DATA_DIR/newstest2014.en \
     --bleu_ref=$DATA_DIR/newstest2014.de \
     --num_gpus=1 \
-    --enable_time_history=false
+    --enable_time_history=false > train.log 2>&1
+
+
+predict test
+
+python3 /home/ubuntu/repos/models/official/nlp/transformer/transformer_main.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
+    --vocab_file=$VOCAB_FILE --param_set=$PARAM_SET \
+    --mode=predict  \
+    --max_length=64 \
+    --bleu_source=$DATA_DIR/newstest2014.en.pred \
+    --bleu_ref=$DATA_DIR/newstest2014.de.pred \
+    --num_gpus=0 \
+    --enable_time_history=false > predict.log 2>&1
+
+
+
+
+    

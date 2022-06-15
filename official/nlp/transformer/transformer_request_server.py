@@ -170,11 +170,11 @@ class TransformerTask(object):
     distribution_strategy = self.distribution_strategy if self.use_tpu else None
     with distribute_utils.get_strategy_scope(distribution_strategy):
       
-      model = transformer.create_model(self.params, False)
-      self._load_weights_if_possible(
-          model,
-          tf.train.latest_checkpoint(self.flags_obj.model_dir))
-      model.summary()
+      #internal_model = transformer.Transformer(self.params, name="transformer_v2")
+      model_export_path = os.path.join(self.flags_obj.model_dir, 'saved_model/2')
+      imported = tf.saved_model.load(model_export_path)
+      internal_model = imported.signatures["serving_default"]
+
 
     params=self.params
     batch_size = params["decode_batch_size"]
@@ -231,12 +231,17 @@ class TransformerTask(object):
       # predictions = json.loads(json_response.text)
 
 
-
-      val_outputs, _ = model.predict(text)
+      t_text=tf.convert_to_tensor(text,dtype=tf.int64)
+      #val_outputs, _ = internal_model(t_text)
+      val_outputs = internal_model(t_text)['outputs'].numpy()
+      print("--------------asdsasaas")
+      print(val_outputs)
 
       length = len(val_outputs)
+      print(length)
       for j in range(length):
         if j + i * batch_size < total_samples:
+          print(val_outputs[j])
           translation = translate._trim_and_decode(val_outputs[j], subtokenizer)
           translations.append(translation)
     

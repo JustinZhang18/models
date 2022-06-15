@@ -55,14 +55,14 @@ def create_model(params, is_train):
       loss = metrics.transformer_loss(logits, targets, label_smoothing,
                                       vocab_size)
       model.add_loss(loss)
-      return model
+      return internal_model,model
 
     else:
       inputs = tf.keras.layers.Input((None,), dtype="int64", name="inputs")
       internal_model = Transformer(params, name="transformer_v2")
       ret = internal_model([inputs], training=is_train)
       outputs, scores = ret["outputs"], ret["scores"]
-      return tf.keras.Model(inputs, [outputs, scores])
+      return internal_model,tf.keras.Model(inputs, [outputs, scores])
 
 
 class Transformer(tf.keras.Model):
