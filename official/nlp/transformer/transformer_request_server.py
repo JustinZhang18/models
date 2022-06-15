@@ -172,8 +172,8 @@ class TransformerTask(object):
       
       #internal_model = transformer.Transformer(self.params, name="transformer_v2")
       model_export_path = os.path.join(self.flags_obj.model_dir, 'saved_model/2')
-      imported = tf.saved_model.load(model_export_path)
-      internal_model = imported.signatures["serving_default"]
+      # imported = tf.saved_model.load(model_export_path)
+      # internal_model = imported.signatures["serving_default"]
 
 
     params=self.params
@@ -213,32 +213,32 @@ class TransformerTask(object):
       num_replicas = distribution_strategy.num_replicas_in_sync
       local_batch_size = params["decode_batch_size"] // num_replicas
     for i, text in enumerate(input_generator()):
-      # text_list=text.tolist()
-      # print(text[0])
-      # print("-----------------------sadas")
-      # print(text_list[0])
+      text_list=text.tolist()
+      print(text[0])
+      print("-----------------------sadas")
+      print(text_list[0])
 
-      # data = json.dumps({"signature_name": "serving_default",
-      #                 "instances": text_list})
-      # print(f'data length: {len(text_list)}')
-      # headers = {"content-type": "application/json"}
-      # logging.info("Data prepared. Start requesting...")
-      # stats = {}
-      # start = datetime.datetime.now()
-      # json_response = requests.post("http://localhost:8501/v1/models/transformer:predict", data=data, headers=headers)
-      # end = datetime.datetime.now()
-      # print("Received response: ", json_response.text)
-      # predictions = json.loads(json_response.text)
+      data = json.dumps({"signature_name": "serving_default",
+                      "instances": text_list})
+      print(f'data length: {len(text_list)}')
+      headers = {"content-type": "application/json"}
+      logging.info("Data prepared. Start requesting...")
+      stats = {}
+      start = datetime.datetime.now()
+      json_response = requests.post("http://localhost:8501/v1/models/transformer:predict", data=data, headers=headers)
+      end = datetime.datetime.now()
+      print("Received response: ", json_response.text)
+      predictions = json.loads(json_response.text)
 
 
-      t_text=tf.convert_to_tensor(text,dtype=tf.int64)
-      #val_outputs, _ = internal_model(t_text)
-      val_outputs = internal_model(t_text)['outputs'].numpy()
-      print("--------------asdsasaas")
-      print(val_outputs)
+      # t_text=tf.convert_to_tensor(text,dtype=tf.int64)
+      # #val_outputs, _ = internal_model(t_text)
+      # val_outputs = internal_model(t_text)['outputs'].numpy()
+      # print("--------------asdsasaas")
+      # print(val_outputs)
 
-      length = len(val_outputs)
-      print(length)
+      # length = len(val_outputs)
+      # print(length)
       for j in range(length):
         if j + i * batch_size < total_samples:
           print(val_outputs[j])
