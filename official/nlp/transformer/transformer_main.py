@@ -203,11 +203,11 @@ class TransformerTask(object):
 
       current_step = 0
       checkpoint = tf.train.Checkpoint(model=model, optimizer=opt)
-      latest_checkpoint = tf.train.latest_checkpoint(flags_obj.model_dir)
-      if latest_checkpoint:
-        checkpoint.restore(latest_checkpoint)
-        logging.info("Loaded checkpoint %s", latest_checkpoint)
-        current_step = opt.iterations.numpy()
+      # latest_checkpoint = tf.train.latest_checkpoint(flags_obj.model_dir)
+      # if latest_checkpoint:
+      #   checkpoint.restore(latest_checkpoint)
+      #   logging.info("Loaded checkpoint %s", latest_checkpoint)
+      #   current_step = opt.iterations.numpy()
 
       if params["use_ctl"]:
         train_loss_metric = tf.keras.metrics.Mean(
