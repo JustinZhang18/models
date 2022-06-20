@@ -74,3 +74,11 @@ to be done.
 ```
  python3 official/vision/image_classification/model_request_server.py --data_dir=/home/ubuntu/repos/models/data_dir --url=http://localhost:8501/v1/models/mnist:predict
 ```
+
+```
+python3 /home/ubuntu/repos/models/official/nlp/transformer/transformer_request_server.py \
+    --vocab_file=$VOCAB_FILE   \
+    --bleu_source=$DATA_DIR/newstest2014.en.pred \
+    --bleu_ref=$DATA_DIR/newstest2014.de.pred \
+     >req_inference_server.log 2>&1
+```
