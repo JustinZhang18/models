@@ -23,6 +23,7 @@ from __future__ import print_function
 
 import os
 import tempfile
+import datetime
 
 # Import libraries
 from absl import app
@@ -296,6 +297,7 @@ class TransformerTask(object):
       logging.info(
           "Start train iteration at global step:{}".format(current_step))
       history = None
+      start = datetime.datetime.now()
       if params["use_ctl"]:
         if not self.use_tpu:
           raise NotImplementedError(
@@ -357,6 +359,8 @@ class TransformerTask(object):
         cased_score_history.append([current_iteration + 1, cased_score])
         uncased_score_history.append([current_iteration + 1, uncased_score])
 
+      end = datetime.datetime.now()
+      
 
     #---------------save model for serving--------------------
     print("saving model...")
@@ -375,6 +379,9 @@ class TransformerTask(object):
       stats["bleu_cased"] = cased_score
       stats["bleu_uncased_history"] = uncased_score_history
       stats["bleu_cased_history"] = cased_score_history
+      
+    stats['elapsed_time'] = (end-start).total_seconds() * 1000
+    print(stats)
     return stats
 
   def save_transformer_model(self, transformer_model, model_dir):

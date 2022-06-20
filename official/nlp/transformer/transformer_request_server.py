@@ -225,6 +225,7 @@ class TransformerTask(object):
         yield batch
 
     translations = []
+    total_elapsed_time=0
     for i, text in enumerate(input_generator()):
       text_list=text.tolist()
 
@@ -237,7 +238,7 @@ class TransformerTask(object):
       start = datetime.datetime.now()
       json_response = requests.post("http://localhost:8501/v1/models/transformer:predict", data=data, headers=headers)
       end = datetime.datetime.now()
-      stats['elapsed_time'] = (end-start).total_seconds() * 1000
+      total_elapsed_time += (end-start).total_seconds() * 1000
       print("Received response: ", json_response)
       val_outputs = self.__resp_to_nparray(json_response)
       
@@ -246,7 +247,7 @@ class TransformerTask(object):
         if j + i * batch_size < total_samples:
           translation = translate._trim_and_decode(val_outputs[j], subtokenizer)
           translations.append(translation)
-
+    stats['elapsed_time'] = total_elapsed_time
 
       # ----------------------inference using load saved model----------------------
     #   t_text=tf.convert_to_tensor(text,dtype=tf.int64)
