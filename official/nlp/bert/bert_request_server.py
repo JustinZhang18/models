@@ -49,26 +49,14 @@ flags.DEFINE_enum(
     '`export_only`: will take the latest checkpoint inside '
     'model_dir and export a `SavedModel`. `predict`: takes a checkpoint and '
     'restores the model to output predictions on the test set.')
-flags.DEFINE_string('train_data_path', None,
-                    'Path to training data for BERT classifier.')
+
 flags.DEFINE_string('eval_data_path', None,
                     'Path to evaluation data for BERT classifier.')
 flags.DEFINE_string(
     'input_meta_data_path', None,
     'Path to file that contains meta data about input '
     'to be used for training and evaluation.')
-flags.DEFINE_integer('train_data_size', None, 'Number of training samples '
-                     'to use. If None, uses the full train data. '
-                     '(default: None).')
-flags.DEFINE_string('predict_checkpoint_path', None,
-                    'Path to the checkpoint for predictions.')
-flags.DEFINE_integer(
-    'num_eval_per_epoch', 1,
-    'Number of evaluations per epoch. The purpose of this flag is to provide '
-    'more granular evaluation scores and checkpoints. For example, if original '
-    'data has N samples and num_eval_per_epoch is n, then each epoch will be '
-    'evaluated every N/n samples.')
-flags.DEFINE_integer('train_batch_size', 32, 'Batch size for training.')
+flags.DEFINE_integer('eval_iter_times', -1, 'Only use for quick testing.')
 flags.DEFINE_integer('eval_batch_size', 32, 'Batch size for evaluation.')
 
 common_flags.define_common_bert_flags()
@@ -131,12 +119,18 @@ def custom_main(custom_callbacks=None, custom_metrics=None):
         label_type=label_type,
         include_sample_weights=include_sample_weights)
     test_iter = iter(strategy.distribute_datasets_from_function(eval_input_fn))
+
+    eval_iter_times = FLAGS.eval_iter_times
     y_true = []
     y_pred = []
     stats = {}
     total_elapsed_time = 0
-
+    cur_iter = 0
     for i in test_iter:
+        if eval_iter_times > 0 and cur_iter >= eval_iter_times:
+            break
+        cur_iter += 1
+        print(f'cur_iter: {cur_iter}/{eval_iter_times}')
         for k, v in i[0].items():
             i[0][k] = v.numpy().tolist()
         data = json.dumps({

@@ -52,3 +52,9 @@ export BERT_DIR=/home/ubuntu/mnt/data/bert/model_dir/uncased_L-24_H-1024_A-16
   --input_meta_data_path=/home/ubuntu/mnt/data/bert/data_dir/MNLI_meta_data.short \
   --eval_data_path=/home/ubuntu/mnt/data/bert/data_dir/${TASK}_eval.tf_record \
   --eval_batch_size=64 
+
+  for fast verification:
+  python bert_request_server.py \
+  --input_meta_data_path=/home/ubuntu/mnt/data/bert/data_dir/MNLI_meta_data.short \
+  --eval_data_path=/home/ubuntu/mnt/data/bert/data_dir/${TASK}_eval.tf_record \
+  --eval_batch_size=4 --eval_iter_times=2
