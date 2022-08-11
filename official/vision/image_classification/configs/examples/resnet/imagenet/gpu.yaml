@@ -26,7 +26,7 @@ validation_dataset:
   image_size: 224
   num_classes: 1000
   num_examples: 50000
-  batch_size: 256
+  batch_size: 4
   use_per_replica_batch_size: True
   dtype: 'float16'
   mean_subtract: True
@@ -43,7 +43,12 @@ model:
   loss:
     label_smoothing: 0.1
 train:
-  resume_checkpoint: True
-  epochs: 90
+  resume_checkpoint: False
+  epochs: 2
+  steps: 2
 evaluation:
-  epochs_between_evals: 1
+  epochs_between_evals: 2
+  skip_eval: True
+  steps: 3
+export:
+  destination: /home/ubuntu/mnt/data/resnet/mode_dir/saved_model/1/
