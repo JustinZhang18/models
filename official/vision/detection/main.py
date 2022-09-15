@@ -236,6 +236,7 @@ def run(callbacks=None):
   if callbacks is None:
     callbacks = []
 
+  print('---------------------:',FLAGS.log_steps)
   if FLAGS.log_steps:
     callbacks.append(
         keras_utils.TimeHistory(
